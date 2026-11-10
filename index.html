@@ -1,0 +1,788 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#111111">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="Quick Ruteo">
+<title>Quick Ruteo</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<style>
+:root{
+  --amarillo:#FFD200; --amarillo-osc:#E6BD00; --negro:#111111; --negro-2:#1E1E1E; --gris:#6B6B6B;
+  --gris-cl:#F2F2F0; --borde:#E2E2DE; --blanco:#FFFFFF;
+  --rojo:#D93025; --verde:#1E8E3E; --naranja:#F29900; --azul:#1A73E8;
+  --radio:14px; --sombra:0 2px 10px rgba(0,0,0,.08);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;background:var(--gris-cl);color:var(--negro);
+  font:15px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+button{font:inherit;cursor:pointer;border:0;background:none;color:inherit}
+input,select,textarea{font:inherit;color:inherit}
+.oculto{display:none!important}
+
+/* ── Login */
+#login{min-height:100%;display:flex;flex-direction:column;justify-content:center;padding:32px 24px;background:var(--negro);color:#fff}
+.marca{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.marca .rayo{width:44px;height:44px;border-radius:12px;background:var(--amarillo);display:grid;place-items:center}
+.marca b{font-size:28px;letter-spacing:.5px}
+.marca b span{color:var(--amarillo)}
+#login p.sub{color:#bdbdbd;margin:0 0 28px}
+.campo{display:block;margin-bottom:14px}
+.campo span{display:block;font-size:13px;color:#bdbdbd;margin-bottom:6px}
+#login input{width:100%;padding:14px 16px;border-radius:12px;border:1px solid #333;background:var(--negro-2);color:#fff;font-size:18px;outline:none}
+#login input:focus{border-color:var(--amarillo)}
+.btn-pri{width:100%;padding:15px;border-radius:12px;background:var(--amarillo);color:var(--negro);font-weight:700;font-size:16px}
+.btn-pri:active{background:var(--amarillo-osc)}
+.btn-pri:disabled{opacity:.5}
+#loginError{color:#ff8a80;min-height:22px;margin-top:10px;font-size:14px}
+
+/* ── App */
+#app{display:flex;flex-direction:column;height:100%}
+header{background:var(--negro);color:#fff;padding:calc(10px + env(safe-area-inset-top)) 16px 0}
+.fila-top{display:flex;align-items:center;gap:10px}
+.fila-top .rayo{width:32px;height:32px;border-radius:9px;background:var(--amarillo);display:grid;place-items:center;flex:none}
+.quien{flex:1;min-width:0}
+.quien b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.quien small{color:#bdbdbd}
+.ico-btn{width:40px;height:40px;border-radius:10px;display:grid;place-items:center;color:#fff}
+.ico-btn:active{background:#2a2a2a}
+#syncBadge{font-size:12px;padding:4px 9px;border-radius:99px;background:#2a2a2a;color:#fff;white-space:nowrap}
+#syncBadge.pend{background:var(--naranja);color:var(--negro);font-weight:700}
+#syncBadge.err{background:var(--rojo)}
+.resumen{display:flex;gap:8px;margin:12px 0}
+.kpi{flex:1;background:var(--negro-2);border-radius:12px;padding:8px 10px}
+.kpi b{display:block;font-size:20px;color:var(--amarillo)}
+.kpi small{color:#bdbdbd;font-size:12px}
+.tabs{display:flex}
+.tab{flex:1;padding:12px 0;color:#bdbdbd;font-weight:600;border-bottom:3px solid transparent}
+.tab.act{color:#fff;border-color:var(--amarillo)}
+#demoBanner{background:var(--amarillo);color:var(--negro);text-align:center;font-size:12px;font-weight:700;padding:4px}
+
+main{flex:1;overflow:auto;position:relative}
+#vistaLista{padding:12px 12px 90px}
+.filtros{display:flex;gap:8px;margin-bottom:12px;overflow-x:auto}
+.chip{padding:7px 14px;border-radius:99px;background:#fff;border:1px solid var(--borde);font-size:14px;white-space:nowrap}
+.chip.act{background:var(--negro);color:#fff;border-color:var(--negro)}
+.vacio{text-align:center;color:var(--gris);padding:48px 16px}
+
+.card{background:#fff;border-radius:var(--radio);box-shadow:var(--sombra);margin-bottom:12px;overflow:hidden;border-left:6px solid var(--borde)}
+.card.p-Alta{border-left-color:var(--rojo)} .card.p-Media{border-left-color:var(--naranja)} .card.p-Baja{border-left-color:var(--azul)}
+.card.cerrado{opacity:.72;border-left-color:var(--verde)} .card.cerrado.novedad{border-left-color:var(--rojo)}
+.card-cab{display:flex;gap:12px;padding:12px 14px 6px;align-items:flex-start}
+.num{width:30px;height:30px;border-radius:50%;background:var(--negro);color:var(--amarillo);display:grid;place-items:center;font-weight:700;font-size:14px;flex:none}
+.card-tit{flex:1;min-width:0}
+.card-tit b{display:block;font-size:16px}
+.card-tit .dir{color:var(--gris);font-size:13px}
+.etqs{display:flex;flex-wrap:wrap;gap:6px;padding:0 14px 8px 56px}
+.etq{font-size:11.5px;font-weight:700;padding:3px 8px;border-radius:6px;background:var(--gris-cl)}
+.etq.alta{background:#FDE7E7;color:var(--rojo)} .etq.media{background:#FEF1D8;color:#9A6100} .etq.baja{background:#E3EEFD;color:var(--azul)}
+.etq.fija{background:var(--negro);color:var(--amarillo)} .etq.adic{background:#FFF6CC;color:#6B5600}
+.etq.ok{background:#E6F4EA;color:var(--verde)} .etq.nov{background:#FDE7E7;color:var(--rojo)}
+.etq.venc{background:var(--rojo);color:#fff} .etq.porv{background:var(--naranja);color:var(--negro)} .etq.atiempo{background:#E6F4EA;color:var(--verde)}
+.etq.sync{background:var(--naranja);color:var(--negro)}
+.detalle{padding:0 14px 8px 56px;font-size:13.5px;color:#333}
+.detalle div{margin-bottom:3px}
+.detalle a{color:var(--azul)}
+.acciones{display:flex;border-top:1px solid var(--borde)}
+.acciones button{flex:1;padding:12px 6px;font-weight:600;font-size:14px;display:flex;align-items:center;justify-content:center;gap:6px}
+.acciones button+button{border-left:1px solid var(--borde)}
+.acciones .cerrar-btn{background:var(--amarillo)}
+.acciones button:active{background:var(--gris-cl)}
+.acciones .cerrar-btn:active{background:var(--amarillo-osc)}
+
+#vistaMapa{position:absolute;inset:0}
+#mapa{position:absolute;inset:0;background:#e5e3df}
+.mapa-ctrl{position:absolute;left:12px;right:12px;bottom:calc(16px + env(safe-area-inset-bottom));display:flex;gap:8px;z-index:500}
+.mapa-ctrl button{flex:1;padding:13px 8px;border-radius:12px;font-weight:700;box-shadow:0 3px 12px rgba(0,0,0,.25)}
+.b-neg{background:var(--negro);color:#fff} .b-ama{background:var(--amarillo);color:var(--negro)}
+.pin{width:32px;height:32px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);display:grid;place-items:center;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.35)}
+.pin span{transform:rotate(45deg);font-weight:800;font-size:13px}
+.yo{width:18px;height:18px;border-radius:50%;background:var(--azul);border:3px solid #fff;box-shadow:0 0 0 6px rgba(26,115,232,.25)}
+.leaflet-popup-content{margin:10px 12px;font-size:13.5px}
+.leaflet-popup-content button{margin-top:8px;padding:8px 10px;border-radius:8px;background:var(--amarillo);font-weight:700;width:100%}
+
+/* ── Modal de cierre */
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:1000;display:flex;align-items:flex-end}
+.hoja{background:#fff;width:100%;max-height:94%;overflow:auto;border-radius:20px 20px 0 0;padding:18px 16px calc(18px + env(safe-area-inset-bottom))}
+.hoja h2{margin:0 0 2px;font-size:19px}
+.hoja .sub{color:var(--gris);font-size:13px;margin-bottom:14px}
+.seg{display:flex;background:var(--gris-cl);border-radius:12px;padding:4px;margin-bottom:14px}
+.seg button{flex:1;padding:11px;border-radius:9px;font-weight:700;color:var(--gris)}
+.seg button.act.ok{background:var(--verde);color:#fff}
+.seg button.act.nov{background:var(--rojo);color:#fff}
+.hoja label{display:block;font-size:13px;font-weight:600;margin:0 0 6px}
+.hoja input[type=text],.hoja select,.hoja textarea{width:100%;padding:12px;border-radius:10px;border:1px solid var(--borde);background:#fff;margin-bottom:14px;outline:none}
+.hoja input:focus,.hoja select:focus,.hoja textarea:focus{border-color:var(--negro)}
+.fotos{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px}
+.foto{position:relative;aspect-ratio:1;border-radius:10px;overflow:hidden;background:var(--gris-cl)}
+.foto img{width:100%;height:100%;object-fit:cover}
+.foto button{position:absolute;top:4px;right:4px;width:26px;height:26px;border-radius:50%;background:rgba(0,0,0,.7);color:#fff;font-weight:700}
+.add-foto{aspect-ratio:1;border-radius:10px;border:2px dashed #c8c8c2;display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--gris);font-size:12px;font-weight:600;gap:4px}
+.fila-btn{display:flex;gap:10px}
+.fila-btn .btn-sec{flex:1;padding:15px;border-radius:12px;background:var(--gris-cl);font-weight:700}
+.fila-btn .btn-pri{flex:2}
+#cierreError{color:var(--rojo);font-size:14px;min-height:20px;margin-bottom:8px}
+
+#toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom));transform:translateX(-50%) translateY(140px);background:var(--negro);color:#fff;padding:12px 18px;border-radius:12px;z-index:2000;max-width:90%;transition:transform .25s;box-shadow:0 6px 20px rgba(0,0,0,.3);font-size:14px}
+#toast.ver{transform:translateX(-50%) translateY(0)}
+#toast.nuevo{background:var(--amarillo);color:var(--negro);font-weight:700}
+.menu{position:absolute;right:12px;top:calc(56px + env(safe-area-inset-top));background:#fff;color:var(--negro);border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.25);z-index:1500;min-width:220px;overflow:hidden}
+.menu button{display:block;width:100%;text-align:left;padding:14px 16px}
+.menu button+button{border-top:1px solid var(--borde)}
+.cola-item{background:#FFF4E5;border-radius:10px;padding:10px 12px;margin-bottom:10px;font-size:13.5px}
+.cola-item .fila-btn{margin-top:8px}
+.cola-item .fila-btn button{padding:8px;border-radius:8px;font-weight:700;flex:1}
+.spin{width:18px;height:18px;border:2.5px solid rgba(0,0,0,.2);border-top-color:var(--negro);border-radius:50%;animation:g .8s linear infinite;display:inline-block;vertical-align:middle}
+@keyframes g{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+
+<!-- ═════════ LOGIN ═════════ -->
+<section id="login" class="oculto">
+  <div class="marca">
+    <div class="rayo"><svg width="22" height="26" viewBox="0 0 22 26"><path d="M13 0L0 15h8l-2 11L22 10h-9z" fill="#111"/></svg></div>
+    <b>QUICK <span>RUTEO</span></b>
+  </div>
+  <p class="sub">Servicios Clínica La Colina</p>
+  <label class="campo"><span>Código de conductor</span><input id="inCodigo" autocomplete="username" autocapitalize="characters" placeholder="Ej: C01"></label>
+  <label class="campo"><span>PIN</span><input id="inPin" type="password" inputmode="numeric" autocomplete="current-password" placeholder="••••"></label>
+  <button class="btn-pri" id="btnLogin">Ingresar</button>
+  <div id="loginError"></div>
+</section>
+
+<!-- ═════════ APP ═════════ -->
+<section id="app" class="oculto">
+  <div id="demoBanner" class="oculto">MODO DEMO · datos de prueba, nada se guarda</div>
+  <header>
+    <div class="fila-top">
+      <div class="rayo"><svg width="15" height="18" viewBox="0 0 22 26"><path d="M13 0L0 15h8l-2 11L22 10h-9z" fill="#111"/></svg></div>
+      <div class="quien"><b id="hNombre">—</b><small id="hFecha"></small></div>
+      <span id="syncBadge">En línea</span>
+      <button class="ico-btn" id="btnRefrescar" aria-label="Actualizar">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-2.6-6.4M21 4v5h-5"/></svg>
+      </button>
+      <button class="ico-btn" id="btnMenu" aria-label="Menú">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
+      </button>
+    </div>
+    <div class="resumen">
+      <div class="kpi"><b id="kPend">0</b><small>Pendientes</small></div>
+      <div class="kpi"><b id="kVenc">0</b><small>Vencidos / por vencer</small></div>
+      <div class="kpi"><b id="kCerr">0</b><small>Cerrados hoy</small></div>
+    </div>
+    <div class="tabs">
+      <button class="tab act" data-vista="lista">Lista</button>
+      <button class="tab" data-vista="mapa">Mapa</button>
+    </div>
+  </header>
+  <div class="menu oculto" id="menu">
+    <button id="mInstalar" class="oculto">📲 Instalar app en el celular</button>
+    <button id="mAvisos">🔔 Activar avisos</button>
+    <button id="mSalir">↩ Cerrar sesión</button>
+  </div>
+
+  <main>
+    <div id="vistaLista">
+      <div id="colaBox"></div>
+      <div class="filtros">
+        <button class="chip act" data-f="pend">Pendientes</button>
+        <button class="chip" data-f="cerr">Cerrados</button>
+        <button class="chip" data-f="todos">Todos</button>
+      </div>
+      <div id="lista"></div>
+    </div>
+    <div id="vistaMapa" class="oculto">
+      <div id="mapa"></div>
+      <div class="mapa-ctrl">
+        <button class="b-neg" id="btnOptimizar">Optimizar ruta</button>
+        <button class="b-ama" id="btnNavegar">Navegar ruta ▸</button>
+      </div>
+    </div>
+  </main>
+</section>
+
+<!-- ═════════ MODAL CIERRE ═════════ -->
+<div class="modal oculto" id="modal">
+  <div class="hoja">
+    <h2 id="mTitulo">Cerrar servicio</h2>
+    <div class="sub" id="mSub"></div>
+    <div class="seg">
+      <button data-r="Entregado" class="act ok">✓ Entregado</button>
+      <button data-r="Novedad">⚠ Novedad</button>
+    </div>
+    <div id="boxMotivo" class="oculto">
+      <label for="inMotivo">Motivo de la novedad *</label>
+      <select id="inMotivo"></select>
+    </div>
+    <label for="inRecibe" id="lblRecibe">Nombre de quien recibe *</label>
+    <input type="text" id="inRecibe" maxlength="120" autocomplete="off">
+    <label for="inObs">Observación</label>
+    <textarea id="inObs" rows="2" maxlength="500"></textarea>
+    <label>Evidencias fotográficas * <small id="cntFotos" style="font-weight:400;color:var(--gris)"></small></label>
+    <div class="fotos" id="fotos"></div>
+    <input type="file" id="inCamara" accept="image/*" capture="environment" class="oculto">
+    <input type="file" id="inGaleria" accept="image/*" multiple class="oculto">
+    <div id="cierreError"></div>
+    <div class="fila-btn">
+      <button class="btn-sec" id="btnCancelar">Cancelar</button>
+      <button class="btn-pri" id="btnConfirmar">Cerrar servicio</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+/* ════════════════════════════════════════════════════════════════════
+   CONFIGURACIÓN — pega aquí la URL de la aplicación web de Apps Script.
+   Si se deja vacía (o se abre con ?demo=1) la app funciona en modo demo.
+   ════════════════════════════════════════════════════════════════════ */
+const API_URL = '';
+
+const FOTOS_MIN = 1, FOTOS_MAX = 5, FOTO_LADO = 1280, FOTO_CALIDAD = 0.7;
+const POLL_MS = 60000, MIN_POR_VENCER = 30;
+const MOTIVOS = ['Destinatario ausente','Área cerrada','Dirección errada','Rechazado por el cliente',
+  'Sin acceso / seguridad','Equipo no disponible','Reprogramado por el cliente','Otro'];
+const RANGO_P = {Alta:0, Media:1, Baja:2};
+const DEMO = !API_URL || new URLSearchParams(location.search).has('demo');
+
+const $ = (s) => document.querySelector(s);
+const $$ = (s) => Array.from(document.querySelectorAll(s));
+const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const ls = {
+  get(k, d){ try{ const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; }catch(e){ return d; } },
+  set(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} },
+  del(k){ try{ localStorage.removeItem(k); }catch(e){} }
+};
+
+let S = {
+  sesion: ls.get('qr_sesion', null),
+  servicios: ls.get('qr_servicios', []),
+  vista: 'lista', filtro: 'pend', abierto: null,
+  pos: null, idsVistos: null, cola: [], sincronizando: false,
+  cierre: null, mapa: null, capa: null
+};
+
+/* ───────────── IndexedDB: cola de cierres (incluye fotos) ───────────── */
+const DB = (() => {
+  let dbp = null;
+  function abrir(){
+    if (dbp) return dbp;
+    dbp = new Promise((ok, mal) => {
+      const r = indexedDB.open('quickruteo', 1);
+      r.onupgradeneeded = () => r.result.createObjectStore('cola', {keyPath: 'jobId'});
+      r.onsuccess = () => ok(r.result); r.onerror = () => mal(r.error);
+    });
+    return dbp;
+  }
+  async function tx(modo, fn){
+    const db = await abrir();
+    return new Promise((ok, mal) => {
+      const t = db.transaction('cola', modo); const st = t.objectStore('cola');
+      const res = fn(st); t.oncomplete = () => ok(res && res.result); t.onerror = () => mal(t.error);
+    });
+  }
+  return {
+    todos: () => tx('readonly', st => st.getAll()),
+    poner: (j) => tx('readwrite', st => st.put(j)),
+    quitar: (id) => tx('readwrite', st => st.delete(id))
+  };
+})();
+
+/* ───────────── API ───────────── */
+async function api(accion, datos){
+  if (DEMO) return demoApi(accion, datos || {});
+  const cuerpo = Object.assign({accion, token: S.sesion && S.sesion.token}, datos || {});
+  let r;
+  try {
+    r = await fetch(API_URL, {method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'}, body: JSON.stringify(cuerpo), redirect:'follow'});
+  } catch(e){ const err = new Error('Sin conexión'); err.red = true; throw err; }
+  if (!r.ok){ const err = new Error('Servidor no disponible ('+r.status+')'); err.red = true; throw err; }
+  const j = await r.json();
+  if (!j.ok){
+    if (j.error === 'SESION'){ salir(true); }
+    const err = new Error(j.mensaje || j.error || 'Error'); err.servidor = true; throw err;
+  }
+  return j;
+}
+
+/* ───────────── Fechas ───────────── */
+function hoyTxt(){ const d = new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function minutosAhora(){ const d = new Date(); return d.getHours()*60 + d.getMinutes(); }
+function aMin(h){ if (!h) return null; const [a,b] = h.split(':').map(Number); return a*60+b; }
+function fechaLarga(){ return new Date().toLocaleDateString('es-CO',{weekday:'long', day:'numeric', month:'long'}); }
+
+/* ───────────── Arranque ───────────── */
+function iniciarApp(){
+  if (DEMO) $('#demoBanner').classList.remove('oculto');
+  if (!S.sesion){ $('#login').classList.remove('oculto'); $('#app').classList.add('oculto'); return; }
+  $('#login').classList.add('oculto'); $('#app').classList.remove('oculto');
+  $('#hNombre').textContent = S.sesion.nombre;
+  $('#hFecha').textContent = fechaLarga();
+  render();
+  cargar(true);
+  procesarCola();
+  ubicar();
+}
+
+$('#btnLogin').onclick = async () => {
+  const codigo = $('#inCodigo').value.trim().toUpperCase(), pin = $('#inPin').value.trim();
+  $('#loginError').textContent = '';
+  if (!codigo || !pin){ $('#loginError').textContent = 'Ingresa tu código y PIN'; return; }
+  const b = $('#btnLogin'); b.disabled = true; b.innerHTML = '<span class="spin"></span>';
+  try {
+    const r = await api('login', {codigo, pin});
+    S.sesion = {token: r.token, nombre: r.nombre, codigo: r.codigo};
+    ls.set('qr_sesion', S.sesion);
+    S.idsVistos = null;
+    pedirAvisos();
+    iniciarApp();
+  } catch(e){ $('#loginError').textContent = e.red ? 'Sin conexión. Intenta de nuevo con señal.' : e.message; }
+  finally { b.disabled = false; b.textContent = 'Ingresar'; }
+};
+$('#inPin').addEventListener('keydown', e => { if (e.key === 'Enter') $('#btnLogin').click(); });
+
+function salir(vencida){
+  S.sesion = null; ls.del('qr_sesion'); ls.del('qr_servicios'); S.servicios = []; S.idsVistos = null;
+  $('#menu').classList.add('oculto');
+  iniciarApp();
+  if (vencida) $('#loginError').textContent = 'Tu sesión venció. Ingresa de nuevo.';
+}
+
+/* ───────────── Carga y sondeo ───────────── */
+async function cargar(silencioso){
+  if (!S.sesion) return;
+  try {
+    const r = await api('servicios', {});
+    const ids = new Set(r.servicios.map(s => s.id));
+    if (S.idsVistos){
+      const nuevos = r.servicios.filter(s => !S.idsVistos.has(s.id) && ['Pendiente','En curso'].includes(s.estado));
+      if (nuevos.length) avisarNuevos(nuevos);
+    }
+    S.idsVistos = ids;
+    S.servicios = r.servicios;
+    ls.set('qr_servicios', S.servicios);
+    estadoRed(true);
+    render();
+  } catch(e){
+    if (e.red) estadoRed(false);
+    if (!silencioso) toast(e.red ? 'Sin conexión: mostrando la última información guardada' : e.message);
+  }
+}
+setInterval(() => { if (document.visibilityState === 'visible'){ cargar(true); procesarCola(); ubicar(); } }, POLL_MS);
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && S.sesion){ $('#hFecha').textContent = fechaLarga(); cargar(true); procesarCola(); } });
+window.addEventListener('online', () => { estadoRed(true); procesarCola(); cargar(true); });
+window.addEventListener('offline', () => estadoRed(false));
+
+let enLinea = navigator.onLine;
+function estadoRed(v){ enLinea = v; pintarSync(); }
+
+function ubicar(){
+  if (!navigator.geolocation) return;
+  navigator.geolocation.getCurrentPosition(p => {
+    S.pos = {lat: +p.coords.latitude.toFixed(6), lng: +p.coords.longitude.toFixed(6)};
+    if (S.mapa) pintarYo();
+    if (S.sesion && enLinea) api('ubicacion', S.pos).catch(() => {});
+  }, () => {}, {enableHighAccuracy:true, timeout:10000, maximumAge:60000});
+}
+
+/* ───────────── Avisos de servicios nuevos ───────────── */
+function avisarNuevos(nuevos){
+  const txt = nuevos.length === 1
+    ? 'Nuevo servicio: ' + (nuevos[0].sedeDestino || nuevos[0].direccion || nuevos[0].id)
+    : nuevos.length + ' servicios nuevos asignados';
+  toast(txt, true);
+  try { navigator.vibrate && navigator.vibrate([250,120,250]); } catch(e){}
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    [0, .22].forEach(t => { const o = ctx.createOscillator(), g = ctx.createGain(); o.frequency.value = 880; o.connect(g); g.connect(ctx.destination);
+      g.gain.setValueAtTime(.25, ctx.currentTime+t); g.gain.exponentialRampToValueAtTime(.001, ctx.currentTime+t+.18); o.start(ctx.currentTime+t); o.stop(ctx.currentTime+t+.2); });
+  } catch(e){}
+  if ('Notification' in window && Notification.permission === 'granted' && navigator.serviceWorker){
+    navigator.serviceWorker.ready.then(reg => reg.showNotification('Quick Ruteo', {body: txt, icon:'icons/icon-192.png', badge:'icons/icon-192.png', tag:'nuevos', renotify:true})).catch(()=>{});
+  }
+}
+function pedirAvisos(){ if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission().catch(()=>{}); }
+
+/* ───────────── Orden y estado ───────────── */
+function abierto(s){ return s.estado === 'Pendiente' || s.estado === 'En curso'; }
+function ordenar(lista){
+  return lista.slice().sort((a,b) => {
+    const ab = abierto(a) ? 0 : 1, bb = abierto(b) ? 0 : 1; if (ab !== bb) return ab - bb;
+    if (!abierto(a)) return (b.horaCierre||'').localeCompare(a.horaCierre||'');
+    const pa = RANGO_P[a.prioridad] ?? 1, pb = RANGO_P[b.prioridad] ?? 1; if (pa !== pb) return pa - pb;
+    const oa = a.orden || 999, ob = b.orden || 999; if (oa !== ob) return oa - ob;
+    return (a.hasta || '99:99').localeCompare(b.hasta || '99:99');
+  });
+}
+function semaforo(s){
+  if (!abierto(s)) return null;
+  if (s.fecha && s.fecha < hoyTxt()) return {c:'venc', t:'Atrasado de ' + s.fecha.slice(5)};
+  const h = aMin(s.hasta); if (h == null) return null;
+  const falta = h - minutosAhora();
+  if (falta < 0) return {c:'venc', t:'Vencido ' + s.hasta};
+  if (falta <= MIN_POR_VENCER) return {c:'porv', t:'Vence en ' + falta + ' min'};
+  return {c:'atiempo', t:'A tiempo'};
+}
+function enCola(id){ return S.cola.find(j => j.id === id); }
+
+/* ───────────── Render lista ───────────── */
+function render(){
+  const todos = ordenar(S.servicios.map(s => { const j = enCola(s.id); return j ? Object.assign({}, s, {estado: j.estado, _sync: true, _err: j.error}) : s; }));
+  const pend = todos.filter(abierto), cerr = todos.filter(s => !abierto(s));
+  $('#kPend').textContent = pend.length;
+  $('#kVenc').textContent = pend.filter(s => { const x = semaforo(s); return x && x.c !== 'atiempo'; }).length;
+  $('#kCerr').textContent = cerr.filter(s => s.fecha === hoyTxt() || s._sync).length;
+  const ver = S.filtro === 'pend' ? pend : S.filtro === 'cerr' ? cerr : todos;
+  const num = new Map(pend.map((s,i) => [s.id, i+1]));
+  $('#lista').innerHTML = ver.length ? ver.map(s => tarjeta(s, num.get(s.id))).join('') :
+    `<div class="vacio">${S.filtro === 'pend' ? '🎉 No tienes servicios pendientes.<br><small>Los nuevos aparecerán aquí automáticamente.</small>' : 'Sin servicios en esta vista.'}</div>`;
+  pintarCola();
+  if (S.mapa && S.vista === 'mapa') pintarMapa();
+}
+
+function tarjeta(s, n){
+  const sem = semaforo(s), cerrado = !abierto(s);
+  const ventana = s.desde || s.hasta ? `🕑 ${s.desde || '—'} – ${s.hasta || '—'}` : '';
+  const etq = [];
+  etq.push(`<span class="etq ${s.tipo === 'Ruta fija' ? 'fija' : 'adic'}">${s.tipo === 'Ruta fija' ? 'RUTA FIJA' : 'ADICIONAL'}</span>`);
+  if (!cerrado) etq.push(`<span class="etq ${(s.prioridad||'media').toLowerCase()}">${esc(s.prioridad||'Media')}</span>`);
+  if (ventana) etq.push(`<span class="etq">${ventana}</span>`);
+  if (sem) etq.push(`<span class="etq ${sem.c}">${sem.t}</span>`);
+  if (cerrado) etq.push(`<span class="etq ${s.estado === 'Entregado' ? 'ok' : 'nov'}">${esc(s.estado)}${s.horaCierre ? ' '+s.horaCierre : ''}</span>`);
+  if (s._sync) etq.push(`<span class="etq sync">${s._err ? 'Error al enviar' : 'Pendiente de enviar'}</span>`);
+  if (s.estado === 'En curso' && !s._sync) etq.push(`<span class="etq porv">En curso</span>`);
+  const abiertoDet = S.abierto === s.id;
+  const det = abiertoDet ? `<div class="detalle">
+      ${s.descripcion ? `<div>📦 ${esc(s.descripcion)}</div>` : ''}
+      ${s.sedeOrigen ? `<div>↗ Recoger en: <b>${esc(s.sedeOrigen)}</b></div>` : ''}
+      ${s.solicitud ? `<div># ${esc(s.origen || '')} ${esc(s.solicitud)}</div>` : ''}
+      ${s.contacto ? `<div>☎ ${contactoHtml(s.contacto)}</div>` : ''}
+      ${s.recibe ? `<div>✍ Recibió: ${esc(s.recibe)}</div>` : ''}
+      ${s.motivo ? `<div>⚠ ${esc(s.motivo)}</div>` : ''}
+      <div style="color:var(--gris)">ID ${esc(s.id)}</div>
+    </div>` : '';
+  const acc = cerrado ? '' : `<div class="acciones">
+      <button data-acc="nav" data-id="${esc(s.id)}">🧭 Navegar</button>
+      <button data-acc="det" data-id="${esc(s.id)}">${abiertoDet ? 'Menos' : 'Detalle'}</button>
+      <button class="cerrar-btn" data-acc="cerrar" data-id="${esc(s.id)}">Cerrar ✓</button>
+    </div>`;
+  return `<div class="card p-${esc(s.prioridad)} ${cerrado ? 'cerrado' : ''} ${s.estado === 'Novedad' ? 'novedad' : ''}" data-id="${esc(s.id)}">
+    <div class="card-cab" data-acc="det" data-id="${esc(s.id)}">
+      <div class="num">${cerrado ? (s.estado === 'Entregado' ? '✓' : '!') : (n || '·')}</div>
+      <div class="card-tit"><b>${esc(s.sedeDestino || 'Servicio ' + s.id)}</b><div class="dir">${esc(s.direccion || 'Sin dirección')}</div></div>
+    </div>
+    <div class="etqs">${etq.join('')}</div>${det}${acc}</div>`;
+}
+function contactoHtml(c){
+  const tel = (c.match(/\+?\d[\d\s-]{6,}\d/) || [])[0];
+  return tel ? esc(c).replace(esc(tel), `<a href="tel:${tel.replace(/[\s-]/g,'')}">${esc(tel)}</a>`) : esc(c);
+}
+
+$('#lista').addEventListener('click', e => {
+  const b = e.target.closest('[data-acc]'); if (!b) return;
+  const id = b.dataset.id, s = S.servicios.find(x => x.id === id); if (!s) return;
+  if (b.dataset.acc === 'det'){ S.abierto = S.abierto === id ? null : id; render(); }
+  if (b.dataset.acc === 'nav'){ marcarInicio(s); abrirNavegacion([s]); }
+  if (b.dataset.acc === 'cerrar') abrirCierre(s);
+});
+$$('.chip').forEach(c => c.onclick = () => { S.filtro = c.dataset.f; $$('.chip').forEach(x => x.classList.toggle('act', x === c)); render(); });
+$$('.tab').forEach(t => t.onclick = () => cambiarVista(t.dataset.vista));
+$('#btnRefrescar').onclick = async () => { const b = $('#btnRefrescar'); b.style.opacity = .4; await cargar(false); await procesarCola(); b.style.opacity = 1; };
+$('#btnMenu').onclick = (e) => { e.stopPropagation(); $('#menu').classList.toggle('oculto'); };
+document.addEventListener('click', e => { if (!e.target.closest('#menu')) $('#menu').classList.add('oculto'); });
+$('#mSalir').onclick = () => {
+  if (S.cola.length && !confirm('Tienes cierres sin enviar. Si cierras sesión se enviarán cuando vuelvas a ingresar. ¿Continuar?')) return;
+  salir(false);
+};
+$('#mAvisos').onclick = () => { pedirAvisos(); toast('Si tu celular lo pide, permite las notificaciones'); };
+
+function marcarInicio(s){
+  if (s.estado !== 'Pendiente') return;
+  s.estado = 'En curso'; ls.set('qr_servicios', S.servicios); render();
+  api('iniciar', {id: s.id, hora: new Date().toISOString()}).catch(() => {});
+}
+
+/* ───────────── Navegación con Google Maps ───────────── */
+function abrirNavegacion(lista){
+  const pts = lista.filter(s => s.lat && s.lng || s.direccion).slice(0, 10);
+  if (!pts.length){ toast('Este servicio no tiene dirección'); return; }
+  const p = s => (s.lat && s.lng) ? s.lat + ',' + s.lng : s.direccion + ', Bogotá';
+  const dest = pts[pts.length-1], wps = pts.slice(0,-1);
+  let url = 'https://www.google.com/maps/dir/?api=1&travelmode=driving&destination=' + encodeURIComponent(p(dest));
+  if (wps.length) url += '&waypoints=' + encodeURIComponent(wps.map(p).join('|'));
+  window.open(url, '_blank');
+}
+$('#btnNavegar').onclick = () => {
+  const pend = ordenar(S.servicios.filter(s => abierto(s) && !enCola(s.id)));
+  if (!pend.length){ toast('No hay servicios pendientes'); return; }
+  if (pend.length > 10) toast('Google Maps admite 10 paradas: se abren las 10 primeras');
+  abrirNavegacion(pend);
+};
+$('#btnOptimizar').onclick = async () => {
+  const b = $('#btnOptimizar'); b.disabled = true; b.innerHTML = '<span class="spin" style="border-top-color:#fff"></span>';
+  try {
+    const r = await api('optimizar', S.pos || {});
+    r.orden.forEach((id, i) => { const s = S.servicios.find(x => x.id === id); if (s) s.orden = i + 1; });
+    ls.set('qr_servicios', S.servicios); render();
+    toast(r.orden.length ? 'Ruta optimizada: prioridad Alta primero, luego el recorrido más corto' : 'No hay pendientes con coordenadas');
+  } catch(e){ toast(e.red ? 'Necesitas señal para optimizar' : e.message); }
+  finally { b.disabled = false; b.textContent = 'Optimizar ruta'; }
+};
+
+/* ───────────── Mapa ───────────── */
+function cambiarVista(v){
+  S.vista = v;
+  $$('.tab').forEach(t => t.classList.toggle('act', t.dataset.vista === v));
+  $('#vistaLista').classList.toggle('oculto', v !== 'lista');
+  $('#vistaMapa').classList.toggle('oculto', v !== 'mapa');
+  if (v === 'mapa'){
+    if (!window.L){ toast('El mapa necesita conexión la primera vez'); return; }
+    if (!S.mapa){
+      S.mapa = L.map('mapa', {zoomControl:false}).setView([4.70, -74.06], 12);
+      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom:19, attribution:'© OpenStreetMap'}).addTo(S.mapa);
+      L.control.zoom({position:'topright'}).addTo(S.mapa);
+      S.capa = L.layerGroup().addTo(S.mapa);
+    }
+    setTimeout(() => { S.mapa.invalidateSize(); pintarMapa(true); }, 60);
+    ubicar();
+  }
+}
+let yoMarker = null;
+function pintarYo(){
+  if (!S.pos || !S.mapa) return;
+  if (!yoMarker) yoMarker = L.marker([S.pos.lat, S.pos.lng], {icon: L.divIcon({className:'', html:'<div class="yo"></div>', iconSize:[18,18]}), zIndexOffset:1000}).addTo(S.mapa);
+  else yoMarker.setLatLng([S.pos.lat, S.pos.lng]);
+}
+function pintarMapa(encuadrar){
+  if (!S.mapa) return;
+  S.capa.clearLayers();
+  const lista = ordenar(S.servicios.map(s => { const j = enCola(s.id); return j ? Object.assign({}, s, {estado:j.estado}) : s; }));
+  const pend = lista.filter(abierto);
+  const limites = [];
+  lista.forEach(s => {
+    if (!s.lat || !s.lng) return;
+    const n = pend.indexOf(s) + 1, ab = abierto(s);
+    const color = !ab ? (s.estado === 'Entregado' ? '#1E8E3E' : '#D93025') : s.prioridad === 'Alta' ? '#D93025' : s.prioridad === 'Baja' ? '#1A73E8' : '#F29900';
+    const txt = ab ? n : (s.estado === 'Entregado' ? '✓' : '!');
+    const icon = L.divIcon({className:'', iconSize:[32,32], iconAnchor:[16,32], popupAnchor:[0,-30],
+      html:`<div class="pin" style="background:${ab ? '#111' : color};${ab ? 'border-color:'+color : ''}"><span style="color:${ab ? '#FFD200' : '#fff'}">${txt}</span></div>`});
+    const sem = semaforo(s);
+    const m = L.marker([s.lat, s.lng], {icon, opacity: ab ? 1 : .6}).addTo(S.capa);
+    m.bindPopup(`<b>${esc(s.sedeDestino || s.id)}</b><br>${esc(s.direccion || '')}<br>
+      <small>${esc(s.tipo)} · ${esc(s.prioridad)} · ${s.desde || '—'}–${s.hasta || '—'}${sem ? ' · ' + sem.t : ''}</small>
+      ${ab ? `<button onclick="cerrarDesdeMapa('${esc(s.id)}')">Cerrar servicio</button>` : `<br><small>${esc(s.estado)} ${s.horaCierre || ''}</small>`}`);
+    if (ab) limites.push([s.lat, s.lng]);
+  });
+  // Línea de recorrido sugerido
+  const linea = pend.filter(s => s.lat && s.lng).map(s => [s.lat, s.lng]);
+  if (S.pos) linea.unshift([S.pos.lat, S.pos.lng]);
+  if (linea.length > 1) L.polyline(linea, {color:'#111', weight:3, opacity:.55, dashArray:'6 8'}).addTo(S.capa);
+  pintarYo();
+  if (encuadrar){
+    if (S.pos) limites.push([S.pos.lat, S.pos.lng]);
+    if (limites.length > 1) S.mapa.fitBounds(limites, {padding:[40,40], maxZoom:16});
+    else if (limites.length === 1) S.mapa.setView(limites[0], 15);
+  }
+}
+window.cerrarDesdeMapa = (id) => { const s = S.servicios.find(x => x.id === id); if (s){ S.mapa.closePopup(); abrirCierre(s); } };
+
+/* ───────────── Cierre con evidencias ───────────── */
+$('#inMotivo').innerHTML = '<option value="">Selecciona…</option>' + MOTIVOS.map(m => `<option>${m}</option>`).join('');
+function abrirCierre(s){
+  if (enCola(s.id)){ toast('Este servicio ya se cerró y está pendiente de enviar'); return; }
+  S.cierre = {s, resultado:'Entregado', fotos:[]};
+  $('#mTitulo').textContent = s.sedeDestino || 'Cerrar servicio';
+  $('#mSub').textContent = [s.direccion, s.tipo, s.id].filter(Boolean).join(' · ');
+  $('#inRecibe').value = ''; $('#inObs').value = ''; $('#inMotivo').value = ''; $('#cierreError').textContent = '';
+  setResultado('Entregado');
+  pintarFotos();
+  $('#modal').classList.remove('oculto');
+  marcarInicio(s);
+  ubicar();
+}
+function setResultado(r){
+  S.cierre.resultado = r;
+  $$('.seg button').forEach(b => { const a = b.dataset.r === r; b.classList.toggle('act', a); b.classList.toggle('ok', a && r === 'Entregado'); b.classList.toggle('nov', a && r === 'Novedad'); });
+  $('#boxMotivo').classList.toggle('oculto', r !== 'Novedad');
+  $('#lblRecibe').textContent = r === 'Entregado' ? 'Nombre de quien recibe *' : 'Persona con quien se gestionó (opcional)';
+}
+$$('.seg button').forEach(b => b.onclick = () => setResultado(b.dataset.r));
+$('#btnCancelar').onclick = () => { $('#modal').classList.add('oculto'); S.cierre = null; };
+
+function pintarFotos(){
+  const f = S.cierre.fotos;
+  $('#cntFotos').textContent = `(${f.length}/${FOTOS_MAX}, mínimo ${FOTOS_MIN})`;
+  let h = f.map((src, i) => `<div class="foto"><img src="${src}" alt="Evidencia ${i+1}"><button data-quitar="${i}" aria-label="Quitar">×</button></div>`).join('');
+  if (f.length < FOTOS_MAX) h += `<button class="add-foto" id="addCam"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>Tomar foto</button>
+    <button class="add-foto" id="addGal"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 16l5-5 4 4 3-3 6 6"/></svg>Galería</button>`;
+  $('#fotos').innerHTML = h;
+  const cam = $('#addCam'), gal = $('#addGal');
+  if (cam) cam.onclick = () => $('#inCamara').click();
+  if (gal) gal.onclick = () => $('#inGaleria').click();
+}
+$('#fotos').addEventListener('click', e => { const q = e.target.closest('[data-quitar]'); if (q){ S.cierre.fotos.splice(+q.dataset.quitar, 1); pintarFotos(); } });
+async function agregarFotos(files){
+  for (const f of Array.from(files || [])){
+    if (S.cierre.fotos.length >= FOTOS_MAX) break;
+    try { S.cierre.fotos.push(await comprimir(f)); } catch(e){ toast('No se pudo leer una foto'); }
+  }
+  pintarFotos();
+}
+$('#inCamara').onchange = e => { agregarFotos(e.target.files); e.target.value = ''; };
+$('#inGaleria').onchange = e => { agregarFotos(e.target.files); e.target.value = ''; };
+
+function comprimir(file){
+  return new Promise((ok, mal) => {
+    const url = URL.createObjectURL(file), img = new Image();
+    img.onload = () => {
+      const k = Math.min(1, FOTO_LADO / Math.max(img.width, img.height));
+      const c = document.createElement('canvas'); c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+      const g = c.getContext('2d'); g.drawImage(img, 0, 0, c.width, c.height);
+      // Sello de agua con fecha, hora e ID del servicio
+      const sello = new Date().toLocaleString('es-CO') + ' · ' + S.cierre.s.id;
+      const fs = Math.max(14, Math.round(c.width / 45));
+      g.font = `bold ${fs}px sans-serif`;
+      const w = g.measureText(sello).width + fs;
+      g.fillStyle = 'rgba(0,0,0,.6)'; g.fillRect(0, c.height - fs*1.8, w, fs*1.8);
+      g.fillStyle = '#FFD200'; g.fillText(sello, fs/2, c.height - fs*0.55);
+      URL.revokeObjectURL(url);
+      ok(c.toDataURL('image/jpeg', FOTO_CALIDAD));
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); mal(new Error('imagen')); };
+    img.src = url;
+  });
+}
+
+function posicionActual(){
+  return new Promise(ok => {
+    if (!navigator.geolocation) return ok(S.pos);
+    navigator.geolocation.getCurrentPosition(p => { S.pos = {lat:+p.coords.latitude.toFixed(6), lng:+p.coords.longitude.toFixed(6)}; ok(S.pos); },
+      () => ok(S.pos), {enableHighAccuracy:true, timeout:8000, maximumAge:30000});
+  });
+}
+
+$('#btnConfirmar').onclick = async () => {
+  const c = S.cierre; if (!c) return;
+  const recibe = $('#inRecibe').value.trim(), obs = $('#inObs').value.trim(), motivo = $('#inMotivo').value;
+  const err = (t) => { $('#cierreError').textContent = t; };
+  if (c.resultado === 'Entregado' && !recibe) return err('Escribe el nombre de quien recibe');
+  if (c.resultado === 'Novedad' && !motivo) return err('Selecciona el motivo de la novedad');
+  if (c.fotos.length < FOTOS_MIN) return err('Agrega al menos ' + FOTOS_MIN + ' foto de evidencia');
+  const b = $('#btnConfirmar'); b.disabled = true; b.innerHTML = '<span class="spin"></span> Guardando';
+  const pos = await posicionActual();
+  const job = {
+    jobId: Date.now().toString(36) + Math.random().toString(36).slice(2,6), id: c.s.id, estado: c.resultado,
+    motivo, recibe, observacion: obs, hora: new Date().toISOString(), lat: pos && pos.lat, lng: pos && pos.lng,
+    fotos: c.fotos, subidas: c.fotos.map(() => false), error: null, creado: Date.now()
+  };
+  try { await DB.poner(job); } catch(e){ b.disabled = false; b.textContent = 'Cerrar servicio'; return err('No hay espacio en el celular para guardar las fotos'); }
+  S.cola.push(job);
+  b.disabled = false; b.textContent = 'Cerrar servicio';
+  $('#modal').classList.add('oculto'); S.cierre = null; S.abierto = null;
+  render();
+  toast(c.resultado === 'Entregado' ? '✓ Servicio cerrado' : '⚠ Novedad registrada');
+  procesarCola();
+};
+
+/* ───────────── Cola de envío (funciona sin señal) ───────────── */
+async function procesarCola(){
+  try { S.cola = (await DB.todos()).sort((a,b) => a.creado - b.creado); } catch(e){}
+  pintarSync();
+  if (S.sincronizando || !S.sesion || !S.cola.length) return;
+  S.sincronizando = true; pintarSync();
+  try {
+    for (const job of S.cola.slice()){
+      if (job.error) continue;
+      try {
+        for (let i = 0; i < job.fotos.length; i++){
+          if (job.subidas[i]) continue;
+          await api('subirFoto', {id: job.id, lote: job.jobId, idx: i, data: job.fotos[i]});
+          job.subidas[i] = true; await DB.poner(job);
+        }
+        await api('cerrar', {id: job.id, estado: job.estado, motivo: job.motivo, recibe: job.recibe, observacion: job.observacion, hora: job.hora, lat: job.lat, lng: job.lng});
+        await DB.quitar(job.jobId);
+        S.cola = S.cola.filter(j => j.jobId !== job.jobId);
+        const s = S.servicios.find(x => x.id === job.id);
+        if (s){ s.estado = job.estado; s.horaCierre = new Date(job.hora).toTimeString().slice(0,5); s.recibe = job.recibe; s.motivo = job.motivo; s.fotos = job.fotos.length; ls.set('qr_servicios', S.servicios); }
+      } catch(e){
+        if (e.red){ estadoRed(false); break; }
+        job.error = e.message; await DB.poner(job);
+      }
+    }
+  } finally { S.sincronizando = false; render(); }
+}
+function pintarSync(){
+  const b = $('#syncBadge'); const n = S.cola.length, errs = S.cola.filter(j => j.error).length;
+  b.className = '';
+  if (errs){ b.classList.add('err'); b.textContent = errs + ' con error'; }
+  else if (S.sincronizando){ b.classList.add('pend'); b.textContent = 'Enviando ' + n + '…'; }
+  else if (n){ b.classList.add('pend'); b.textContent = n + ' sin enviar'; }
+  else b.textContent = enLinea ? 'En línea' : 'Sin señal';
+}
+function pintarCola(){
+  const errs = S.cola.filter(j => j.error);
+  $('#colaBox').innerHTML = errs.map(j => `<div class="cola-item"><b>No se pudo enviar ${esc(j.id)}</b><br>${esc(j.error)}
+    <div class="fila-btn"><button style="background:#fff" data-reint="${j.jobId}">Reintentar</button><button style="background:var(--rojo);color:#fff" data-desc="${j.jobId}">Descartar</button></div></div>`).join('');
+}
+$('#colaBox').addEventListener('click', async e => {
+  const r = e.target.closest('[data-reint]'), d = e.target.closest('[data-desc]');
+  if (r){ const j = S.cola.find(x => x.jobId === r.dataset.reint); if (j){ j.error = null; await DB.poner(j); procesarCola(); } }
+  if (d && confirm('Se descartará este cierre y sus fotos. Avisa a tu coordinador. ¿Continuar?')){ await DB.quitar(d.dataset.desc); procesarCola(); }
+});
+
+/* ───────────── Toast ───────────── */
+let tT;
+function toast(t, nuevo){ const el = $('#toast'); el.textContent = t; el.className = 'ver' + (nuevo ? ' nuevo' : ''); clearTimeout(tT); tT = setTimeout(() => el.className = '', nuevo ? 6000 : 3200); }
+
+/* ───────────── Instalación PWA ───────────── */
+let promptInstalar = null;
+window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); promptInstalar = e; $('#mInstalar').classList.remove('oculto'); });
+$('#mInstalar').onclick = async () => { if (!promptInstalar) return; promptInstalar.prompt(); await promptInstalar.userChoice; promptInstalar = null; $('#mInstalar').classList.add('oculto'); };
+if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
+
+/* ───────────── MODO DEMO ───────────── */
+let demoDatos = null;
+function demoApi(accion, d){
+  return new Promise((ok, mal) => setTimeout(() => {
+    if (!demoDatos){
+      const h = hoyTxt(), m = minutosAhora();
+      const hh = (x) => { x = Math.max(0, Math.min(1439, x)); return String(Math.floor(x/60)).padStart(2,'0') + ':' + String(x%60).padStart(2,'0'); };
+      demoDatos = [
+        {id:'S-DEMO-001', fecha:h, tipo:'Adicional', origen:'Almera', solicitud:'ALM-58213', prioridad:'Alta', desde:hh(m-30), hasta:hh(m+20), sedeOrigen:'Clínica La Colina', sedeDestino:'Clínica del Country', direccion:'Carrera 16 # 82-57', lat:4.6681, lng:-74.0566, descripcion:'Sobre de historias clínicas – entregar en Archivo', contacto:'Laura Gómez 3001234567', estado:'Pendiente', orden:null},
+        {id:'S-DEMO-002', fecha:h, tipo:'Adicional', origen:'Fracttal', solicitud:'OT-1142', prioridad:'Alta', desde:hh(m), hasta:hh(m+90), sedeOrigen:'Clínica del Country', sedeDestino:'Clínica La Colina', direccion:'Calle 167 # 72-07', lat:4.7458, lng:-74.0663, descripcion:'Traslado de bomba de infusión – Biomédica', contacto:'Ing. Ruiz ext 4410', estado:'Pendiente', orden:null},
+        {id:'F-DEMO-R1-1', fecha:h, tipo:'Ruta fija', origen:'Ruta fija', solicitud:'R1', prioridad:'Alta', desde:hh(m-60), hasta:hh(m-10), sedeDestino:'Laboratorio sede Norte', direccion:'Calle 134 # 7B-83', lat:4.7189, lng:-74.0320, descripcion:'Recolección de muestras de laboratorio', estado:'Pendiente', orden:1},
+        {id:'S-DEMO-003', fecha:h, tipo:'Adicional', origen:'Almera', solicitud:'ALM-58240', prioridad:'Media', desde:hh(m+30), hasta:hh(m+180), sedeOrigen:'Clínica La Colina', sedeDestino:'Consultorios Calle 100', direccion:'Calle 100 # 19-61', lat:4.6862, lng:-74.0489, descripcion:'Correspondencia – Facturación', estado:'Pendiente', orden:null},
+        {id:'S-DEMO-004', fecha:h, tipo:'Adicional', origen:'Almera', solicitud:'ALM-58251', prioridad:'Baja', desde:'', hasta:hh(m+300), sedeDestino:'Sede administrativa', direccion:'Avenida 19 # 120-71', lat:4.7004, lng:-74.0451, descripcion:'Papelería', estado:'Pendiente', orden:null},
+        {id:'F-DEMO-R1-0', fecha:h, tipo:'Ruta fija', origen:'Ruta fija', solicitud:'R1', prioridad:'Alta', desde:hh(m-150), hasta:hh(m-120), sedeDestino:'Clínica La Colina – Recepción', direccion:'Calle 167 # 72-07', lat:4.7458, lng:-74.0663, estado:'Entregado', horaCierre:hh(m-125), recibe:'Recepción', orden:0}
+      ];
+      setTimeout(() => { demoDatos.push({id:'S-DEMO-005', fecha:h, tipo:'Adicional', origen:'Almera', solicitud:'ALM-58302', prioridad:'Alta', desde:hh(m+5), hasta:hh(m+60), sedeOrigen:'Clínica La Colina', sedeDestino:'Clínica del Country – Banco de sangre', direccion:'Carrera 16 # 82-57', lat:4.6684, lng:-74.0570, descripcion:'Hemoderivados – cadena de frío', estado:'Pendiente', orden:null}); if (S.sesion) cargar(true); }, 45000);
+    }
+    switch (accion){
+      case 'login': return (d.pin === '1234') ? ok({ok:true, token:'demo', nombre:'Conductor Demo', codigo: d.codigo || 'C01'}) : mal(Object.assign(new Error('En demo usa cualquier código y PIN 1234'), {servidor:true}));
+      case 'servicios': return ok({ok:true, servicios: JSON.parse(JSON.stringify(demoDatos))});
+      case 'iniciar': { const s = demoDatos.find(x => x.id === d.id); if (s && s.estado === 'Pendiente') s.estado = 'En curso'; return ok({ok:true}); }
+      case 'subirFoto': return ok({ok:true});
+      case 'cerrar': { const s = demoDatos.find(x => x.id === d.id); if (s){ s.estado = d.estado; s.horaCierre = new Date().toTimeString().slice(0,5); s.recibe = d.recibe; s.motivo = d.motivo; } return ok({ok:true}); }
+      case 'ubicacion': return ok({ok:true});
+      case 'optimizar': {
+        const pend = demoDatos.filter(abierto).sort((a,b) => (RANGO_P[a.prioridad]-RANGO_P[b.prioridad]) || (a.hasta||'').localeCompare(b.hasta||''));
+        pend.forEach((s,i) => s.orden = i+1); return ok({ok:true, orden: pend.map(s => s.id)});
+      }
+    }
+    ok({ok:true});
+  }, 350));
+}
+
+iniciarApp();
+</script>
+</body>
+</html>
